@@ -1,135 +1,111 @@
-# YouTube Comment Sentiment Analysis
+# YouTube Comment Augmentation and Sentiment Analysis
 
-This project performs sentiment analysis on YouTube video comments using the Gemini API and YouTube Data API. The goal is to fetch comments from YouTube videos, analyze their sentiment (positive, neutral, or negative), and output the results in CSV format. 
+## Overview
 
-## Requirements
+This project provides a system for augmenting and analyzing YouTube comments using Google's Gemini API. The primary objective of this pipeline is to collect over **1 million YouTube comments** along with their **sentiment labels** for the purpose of **fine-tuning a large language model (LLM)** that is primarily trained on **Twitter tweets data**. By fine-tuning the LLM with YouTube comment data, the goal is to enhance its efficiency and accuracy in sentiment analysis, specifically for content and user interactions found on YouTube.
 
-- Python 3.7+
-- Required Python libraries:
-  - `pandas`
-  - `aiohttp`
-  - `google.generativeai`
-  - `csv`
-  - `json`
-  - `re`
-  - `asyncio`
-  - `time`
+The project involves two main code files:
+- **`comment_extraction_labeling.ipynb`**: Responsible for collecting YouTube comments and labeling them with sentiment.
+- **`Comment_Augmentation.ipynb`**: Handles augmenting the comments using Google's Gemini API to create diverse variations while preserving sentiment.
 
-You can install the necessary libraries with:
+## Prerequisites
+
+Before running the code, ensure that the following dependencies are installed:
 
 ```bash
-pip install -r requirements.txt
+pip install google-generativeai pandas
 ```
 
-## API Keys
+Additionally, you'll need access to the Google Gemini API. Make sure to replace the `gemini_api` variables in the code with your own API keys.
 
-This project utilizes the following APIs:
-1. **Google YouTube Data API**: Required for fetching video details and comments.
-2. **Gemini API (Google's generative AI)**: Required for performing sentiment analysis.
+## Directory Structure
 
-### Setting Up API Keys
+The project contains two main files:
+1. **`comment_extraction_labeling.ipynb`**: Sentiment analysis and comment fetching.
+2. **`Comment_Augmentation.ipynb`**: Comment augmentation using Gemini API.
 
-To use the project, you'll need to set your own API keys. 
+These files collectively implement a pipeline that:
+- **Fetches YouTube comments** from specific videos.
+- **Performs sentiment analysis** (positive, neutral, or negative) on the fetched comments.
+- **Augments the comments** by generating alternative versions while preserving their original sentiment and meaning.
 
-1. **Gemini API Key(s)**: You can use multiple keys to avoid rate limits imposed by Gemini.
-2. **YouTube API Key(s)**: Similar to Gemini, you can use multiple keys to avoid hitting the rate limit of YouTube API.
+The output of the pipeline includes several CSV files, including:
+- **`df_neu_tail.csv`**: Contains the augmented comments.
+- **`sentiments-<region_code>-<cat_id>-<sort_by>-<video_id>.csv`**: Contains sentiment analysis results for individual videos.
+- **`combined_sentiments-<region_code>-<cat_id>-<sort_by>.csv`**: A combined CSV file of sentiment analysis results for all videos.
 
-Set your keys in the script:
+## Main Objective: Collecting Data for Fine-Tuning an LLM
 
-```python
-gemini_api = 'your_gemini_api'
-gemini_api_2 = 'optional_gemini_api'
-gemini_api_3 = 'optional_gemini_api'
-gemini_api_4 = 'optional_gemini_api'
-gemini_api_5 = 'optional_gemini_api'
-youtube_api = 'your_youtube_api'
-youtube_api_2 = 'optional_youtube_api'
-youtube_api_3 = 'optional_youtube_api'
-```
+The main reason for creating these pipelines and scripts is to collect a large set of **YouTube comments** (targeting **1 million comments**) along with their corresponding **sentiment labels**. This dataset will be used to **fine-tune a large language model (LLM)** for sentiment analysis.
 
-If you wish to use only one API key, the system will still function, but rate limiting may be encountered if the volume of requests is high.
+### Why Fine-Tuning an LLM with YouTube Data?
+The fine-tuning process aims to:
+- Improve the performance of the LLM on sentiment analysis tasks for platforms like YouTube.
+- Enable the model to better understand the nuances of YouTube comments, which may differ from the short and often informal nature of Twitter tweets.
+- Enhance the model's ability to classify the sentiment of user-generated content across different platforms.
 
-## Functions
+By leveraging the collected YouTube comments and their sentiment labels, this fine-tuning process will help create a sentiment analysis model that is more tailored and efficient for handling the unique context of YouTube comments.
 
-### Fetching YouTube Videos
+## How it Works
 
-1. **`fetch_videos(region_code, category_id, max_results, sort_by)`**:
-   Fetches popular YouTube videos based on region and category. Allows pagination for large datasets.
+### `comment_extraction_labeling.ipynb`: Sentiment Analysis and Comment Fetching
 
-2. **`fetch_videos_channel(channel_id, max_results, sort_by)`**:
-   Fetches videos from a specific YouTube channel.
+1. **Fetching Comments**: 
+   - The `sentiment_analysis_batch` function fetches YouTube comments for a given list of videos. It retrieves comments from multiple sources (up to 200 per video) and processes them by cleaning and filtering out any unnecessary timestamps or irrelevant data.
+   
+2. **Sentiment Analysis**: 
+   - Sentiment labels (positive, neutral, negative) are generated for each comment based on the context provided by the video title. The sentiment analysis is performed using the Gemini API. 
 
-3. **`fetch_video_details(video_id)`**:
-   Fetches detailed information about a specific video, including statistics and content details.
+3. **Output**: 
+   - The sentiment analysis results are written to CSV files (`sentiments-<region_code>-<cat_id>-<sort_by>-<video_id>.csv` for each video, and `combined_sentiments-<region_code>-<cat_id>-<sort_by>.csv` for all videos).
 
-4. **`fetch_comments_data(video_id, api, max_results, order)`**:
-   Fetches comments for a specific video. Supports pagination and API key rotation.
+### `Comment_Augmentation.ipynb`: Comment Augmentation Using Gemini API
 
-### Sentiment Analysis
+1. **Comment Augmentation**:
+   - The `augment_comments` function generates augmented versions of each comment, rephrasing them while retaining the original sentiment and meaning.
+   
+2. **Handling Multiple API Keys**:
+   - The system rotates between multiple Gemini API keys (`gemini_api`, `gemini_api_2`, `gemini_api_3`, etc.) to avoid rate-limiting issues, with a rate limit of 10 requests per minute.
 
-The sentiment analysis function classifies YouTube comments as "positive", "neutral", or "negative" based on the video's title, topic, and the tone of the comments.
+3. **Batch Processing**:
+   - The `augmentation_comment_batch` function processes comments in batches and augments them in parallel. Once augmented, these comments are saved to a new CSV file (`df_neu_tail.csv`).
 
-1. **`analyze_comments(title, comments)`**:
-   Analyzes the sentiment of a list of comments. It uses the Gemini API for analysis, rotating between multiple API keys to prevent hitting the rate limit.
+## Key Functions
 
-2. **`sentiment_analysis_batch(region_code, cat_id, sort_by)`**:
-   This function fetches video details and comments for a specific region and category. It then performs sentiment analysis on the fetched comments and saves the results to CSV files.
+### `comment_extraction_labeling.ipynb`: Sentiment Analysis and Comment Fetching
+- **`sentiment_analysis_batch(region_code, cat_id, sort_by)`**: Fetches YouTube comments for videos and performs sentiment analysis on each comment.
+- **`remove_links(comment)`**: Cleans comments by removing any URLs.
+- **`has_multiple_timestamps(comment)`**: Checks whether a comment contains multiple timestamps.
+- **`analyze_comments(video_title, comment_texts)`**: Analyzes the sentiment of a list of comments based on the video title.
 
-### Helper Functions
+### `Comment_Augmentation.ipynb`: Comment Augmentation Using Gemini API
+- **`augment_comments(comments)`**: Takes a list of YouTube comments and generates rephrased versions with the same sentiment.
+- **`augmentation_comment_batch(df)`**: Augments comments in batches and saves the results in a CSV file.
+- **`robust_json_loads(raw_output)`**: Safely parses JSON data from the Gemini API response.
+- **`escape_inner_double_quotes(s)`**: Escapes any internal double quotes in the comments to ensure proper formatting.
 
-- **`has_multiple_timestamps(comment)`**: Checks if a comment contains multiple timestamps (e.g., for videos with timecodes).
-- **`remove_links(comment)`**: Strips URLs from comments to avoid irrelevant content during analysis.
+### Rate Limiting and API Key Rotation
+The system rotates between multiple API keys to manage rate limits. The `toggle` variable ensures the system switches between keys after each request, and the system will sleep for a short period when the rate limit is reached.
 
-## Running the Script
+## Example Usage
 
-You can run the sentiment analysis batch script using the following function:
+### Augmenting Comments
+To augment comments using a batch, call the `augmentation_comment_batch(df)` function, where `df` is a DataFrame containing the original comments. The augmented comments will be saved to a new CSV file.
 
-```python
-sentiment_analysis_batch(region_code="US", cat_id="10", sort_by="viewCount")
-```
+### Performing Sentiment Analysis
+To perform sentiment analysis, the `sentiment_analysis_batch(region_code, cat_id, sort_by)` function can be used to fetch and analyze the comments for a list of YouTube videos.
 
-### Parameters:
-- `region_code`: The region code (e.g., "US", "GB").
-- `cat_id`: The YouTube video category ID (e.g., "10" for Music).
-- `sort_by`: How to sort the videos (e.g., "viewCount", "relevance").
+### Output Files
 
-The function will fetch the most popular videos from the specified region and category, analyze the comments, and output sentiment results in CSV files. The files will be named based on the region, category, and sort order.
+After processing, the following files are generated:
+1. **`df_neu_tail.csv`**: A CSV file containing the augmented comments.
+2. **`sentiments-<region_code>-<cat_id>-<sort_by>-<video_id>.csv`**: A CSV file containing the sentiment analysis results for each video.
+3. **`combined_sentiments-<region_code>-<cat_id>-<sort_by>.csv`**: A combined CSV file containing the sentiment analysis results for all videos.
 
-### Example:
+## Conclusion
 
-```bash
-python sentiment_analysis.py
-```
-
-The script will generate CSV files for each video analyzed, and a combined CSV file containing the sentiment analysis results for all processed videos.
-
-## Error Handling
-
-- If a video has no comments or if there’s an issue fetching the comments, the video will be skipped, and it will be logged in the `failed_videos` list.
-- Rate limiting is handled by rotating through multiple API keys and introducing delays when necessary.
-
-## Output
-
-After processing the comments, the results will be saved to CSV files:
-
-- A CSV file for each individual video: `sentiments-{region_code}-{cat_id}-{sort_by}-{video_id}.csv`
-- A combined CSV file containing the results for all videos: `combined_sentiments-{region_code}-{cat_id}-{sort_by}.csv`
-
-The CSV files will contain the following columns:
-
-- `ComId`: Comment ID
-- `Vid`: Video ID
-- `VideoTitle`: Title of the video
-- `AuthorName`: Name of the author
-- `AuthorCid`: Author's channel ID
-- `Comment`: The comment text
-- `Sentiment`: The sentiment label ("Positive", "Neutral", or "Negative")
-- `LikeCount`: Number of likes on the comment
-- `ReplyCount`: Number of replies to the comment
-- `PublishedAt`: Date and time the comment was published
-- `RegionCode`: The region code where the video is popular
-- `CategoryId`: The video category ID
+This system offers a robust solution for augmenting and analyzing YouTube comments using Google's Gemini API. It handles large batches of comments efficiently and ensures that both augmentation and sentiment analysis are performed at scale, with rate limiting and key rotation in place to ensure smooth operations. The ultimate goal of this project is to collect a large dataset of sentiment-labeled YouTube comments to fine-tune a large language model for improved sentiment analysis capabilities.
 
 ## License
 
-This project is open-source and available under the MIT License.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
